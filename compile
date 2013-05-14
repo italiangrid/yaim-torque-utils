@@ -1,0 +1,35 @@
+#!/bin/bash
+
+PKGNAME=glite-yaim-torque-utils
+PKGVER=5.1.2
+PKGREL=1
+
+ITEMS_FOR_SOURCE="config"
+
+if [ "${1}" == "clean" ] ; then
+    rm -rf ${PWD}/rpmbuild || echo "Nothing to clean"
+    exit 0
+fi
+
+if [ -z "${1}" -o "${1}" == "rpm" ] ; then
+
+    mkdir -p  rpmbuild/RPMS
+    mkdir -p  rpmbuild/SRPMS/
+    mkdir -p  rpmbuild/SPECS/
+    mkdir -p  rpmbuild/SOURCES/
+    mkdir -p  rpmbuild/BUILD/
+
+    tar -zcf rpmbuild/SOURCES/${PKGNAME}.tar.gz ${ITEMS_FOR_SOURCE}
+    sed -e 's|@PKGNAME@|'${PKGNAME}'|g' \
+        -e 's|@PKGVERSION@|'${PKGVER}'|g' \
+        -e 's|@PKGRELEASE@|'${PKGREL}'|g' \
+        project/${PKGNAME}.spec.in > rpmbuild/SPECS/${PKGNAME}.spec
+    rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" rpmbuild/SPECS/${PKGNAME}.spec
+
+else
+    echo "Unsupported format $1"
+    exit 1
+fi
+
+exit 0
+

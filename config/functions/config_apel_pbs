@@ -1,0 +1,138 @@
+##############################################################################
+# Copyright (c) Members of the EGEE Collaboration. 2004.
+# See http://www.eu-egee.org/partners/ for details on the copyright
+# holders.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##############################################################################
+#
+# NAME :        config_apel pbs
+#
+# DESCRIPTION : This function configures APEL accounting for a pbs/server batch
+#		system.
+#
+# AUTHORS :     Nuno.Orestes.Vaz.da.Silva@cern.ch
+#               Di.Qing@cern.ch
+#
+# NOTES :       ---
+#
+# YAIM MODULE:  glite-yaim-torque-utils
+#
+##############################################################################
+
+function config_apel_pbs_check () {
+
+	requires $1 BATCH_SERVER SITE_NAME CE_HOST \
+		APEL_DB_PASSWORD APEL_MYSQL_HOST
+}                                                                                                                            
+
+function config_apel_pbs_setenv () {                                                                                         
+
+	yaimlog DEBUG "This function currently doesn't set any environment variables."
+}
+ 
+config_apel_pbs () {
+
+  	### Auxiliary script parameters
+	R_CONFIG_YAIM="/etc/glite-apel-pbs/parser-config-yaim.xml"
+	PARSER_CONFIG="/etc/glite-apel-pbs/parser-config.xml"
+
+        yaimlog DEBUG "Check if the parser config template (/etc/glite-apel-pbs/parser-config.xml) exists, exits if not" 
+	####@ Check if the parser config template (/etc/glite-apel-pbs/parser-config.xml) exists, exits if not.
+
+
+        if [ -z "${TORQUE_VAR_DIR}" ]; then
+          yaimlog DEBUG "TORQUE_VAR_DIR not set"
+          if [ -d "/var/lib/torque" ]; then
+            yaimlog DEBUG "Using /var/lib/torque"
+            TORQUE_VAR_DIR="/var/lib/torque"
+          else
+            if [ -d "/var/torque" ]; then
+              yaimlog DEBUG "Using /var/torque"
+              TORQUE_VAR_DIR="/var/torque"
+            else
+              yaimlog ERROR "And not found /var/torque nor /var/lib/torque"
+              exit 1
+            fi
+          fi
+        else
+          yaimlog DEBUG "TORQUE_VAR_DIR is set"
+          TORQUE_VAR_DIR=${TORQUE_VAR_DIR}
+        fi
+
+
+	GLITE_LOCATION="${GLITE_LOCATION:-${INSTALL_ROOT}/glite}"
+	GLITE_LOCATION_LOG="${GLITE_LOCATION_LOG:-${GLITE_LOCATION}/var/log}"
+
+	if [ ! -f ${PARSER_CONFIG} ]; then
+	    yaimlog ERROR "Apel's parser-config template not found in ${PARSER_CONFIG}"
+	    return 1
+	fi
+
+
+  # Find directory containing accounting log files
+       # Use BATCH_ACCT_DIR if set. Otherwise use ${TORQUE_VAR_DIR}/server_priv/accounting
+       if [ -z "$BATCH_ACCT_DIR" ]; then
+            yaimlog DEBUG "BATCH_ACCT_DIR not set. Using ${TORQUE_VAR_DIR}/server_priv/accounting"
+            acclogdir=${TORQUE_VAR_DIR}/server_priv/accounting
+       else
+            yaimlog DEBUG "BATCH_ACCT_DIR is set to ${BATCH_ACCT_DIR}"
+            acclogdir=${BATCH_ACCT_DIR}
+       fi
+
+
+
+        yaimlog DEBUG "Create a parser config xml file (/etc/glite-apel-pbs/parser-config-yaim.xml)"
+	####@ Create a parser config xml file (/etc/glite-apel-pbs/parser-config-yaim.xml).
+	yaimlog DEBUG "Creating APEL parser configuration in ${R_CONFIG_YAIM}"
+	if  ( echo " ${NODE_TYPE_LIST} " | egrep -q "creamCE" ); then
+      	  cat ${PARSER_CONFIG} | sed \
+    	    -e "s/localhost/${APEL_MYSQL_HOST}/" \
+    	    -e "s/<DBUsername>.*/<DBUsername>accounting<\/DBUsername>/" \
+    	    -e "s/<DBPassword>.*/<DBPassword>${APEL_DB_PASSWORD}<\/DBPassword>/" \
+    	    -e "s/<SubmitHost>.*/<SubmitHost>${CE_HOST}<\/SubmitHost>/" \
+    	    -e "s/<SiteName>.*/<SiteName>${SITE_NAME}<\/SiteName>/" \
+    	    -e "s/<GIIS>.*/<GIIS>${CE_HOST}<\/GIIS>/" \
+	    -e "s/<BlahdLogPrefix>.*/<BlahdLogPrefix>blahp.log-<\/BlahdLogPrefix>/" \
+	    -e "s|<Dir>/opt/edg.*</Dir>|<Dir>${GLITE_LOCATION_LOG}/accounting</Dir>|" \
+	    -e "s|/var/spool/pbs/server_priv/accounting|${acclogdir}|" \
+    	    -e "/<DBDeleteProcessor/d" \
+    	    -e "/<ExtraFile/d" \
+	  > ${R_CONFIG_YAIM}
+	else
+      	  cat ${PARSER_CONFIG} | sed \
+    	    -e "s/localhost/${APEL_MYSQL_HOST}/" \
+    	    -e "s/<DBUsername>.*/<DBUsername>accounting<\/DBUsername>/" \
+    	    -e "s/<DBPassword>.*/<DBPassword>${APEL_DB_PASSWORD}<\/DBPassword>/" \
+    	    -e "s/<SubmitHost>.*/<SubmitHost>${CE_HOST}<\/SubmitHost>/" \
+    	    -e "s/<SiteName>.*/<SiteName>${SITE_NAME}<\/SiteName>/" \
+    	    -e "s/<GIIS>.*/<GIIS>${CE_HOST}<\/GIIS>/" \
+	    -e "s|/var/spool/pbs/server_priv/accounting|${acclogdir}|" \
+    	    -e "/<DBDeleteProcessor/d" \
+    	    -e "/<ExtraFile/d" \
+	  > ${R_CONFIG_YAIM}
+	fi
+
+        yaimlog DEBUG "Change the ownership and permissions of the created config file"
+	####@ Change the ownership and permissions of the created config file.
+	chown root:root ${R_CONFIG_YAIM}
+	chmod 600 ${R_CONFIG_YAIM}
+
+
+
+        yaimlog DEBUG "Add a cron job (glite-apel-pbs-parser) for periodic configuration." 
+	####@ Add a cron job (glite-apel-pbs-parser) for periodic configuration.
+cron_job glite-apel-pbs-parser root "35 01 * * * env APEL_HOME=/ /usr/bin/apel-pbs-log-parser -f /etc/glite-apel-pbs/parser-config-yaim.xml >> /var/log/apel.log 2>&1"
+
+        return 0
+}
