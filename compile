@@ -2,7 +2,7 @@
 
 PKGNAME=glite-yaim-torque-utils
 PKGVER=5.1.2
-PKGREL=1
+PKGREL=2
 
 ITEMS_FOR_SOURCE="config"
 

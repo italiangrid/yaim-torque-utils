@@ -1,7 +1,7 @@
 Summary: Utilities for TORQUE configuration
 Name: @PKGNAME@
 Version: @PKGVERSION@
-Release: @PKGRELEASE@
+Release: @PKGRELEASE@%{?dist}%{!?dist:.el5}
 License: Apache License 2.0
 Vendor: EMI
 Group: System Environment/Libraries
