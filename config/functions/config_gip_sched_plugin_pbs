@@ -84,13 +84,12 @@ function config_gip_sched_plugin_pbs () {
         yaimlog DEBUG "Add BATCH_SERVER to the $TORQUE_VAR_DIR/server_name file to enable torque clients"
 	####@ Add BATCH_SERVER to the $TORQUE_VAR_DIR/server_name file to enable torque clients.
     	echo $BATCH_SERVER > $TORQUE_VAR_DIR/server_name
-     	mylrmsinfo=/usr/libexec/lrmsinfo-pbs
+     	mylrmsinfo="/usr/libexec/lrmsinfo-pbs -s ${BATCH_SERVER}"
          
         yaimlog DEBUG "Create ERT configuration" 
         ####@ Create ERT configuration
  
         cat <<EOF >> /etc/lrms/scheduler.conf
-module_search_path : ../lrms:../ett
 [LRMS]
 lrms_backend_cmd: $mylrmsinfo
 [Scheduler]
