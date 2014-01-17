@@ -1,8 +1,8 @@
 #!/bin/bash
 
 PKGNAME=glite-yaim-torque-utils
-PKGVER=5.1.2
-PKGREL=2
+PKGVER=5.1.3
+PKGREL=1
 
 ITEMS_FOR_SOURCE="config"
 
